@@ -23,8 +23,12 @@
   .chip .rm{cursor:pointer;opacity:.7;font-size:15px;line-height:1;}
   .add-row{display:flex;gap:8px;margin-top:8px;}
   #add-btn{background:#4ade80;color:#07111f;border:none;border-radius:8px;padding:0 18px;font-weight:900;font-size:20px;}
-  #kickoff-btn{width:100%;padding:15px;border-radius:12px;border:none;background:#4ade80;color:#07111f;font-weight:900;font-size:17px;letter-spacing:1px;margin-top:4px;transition:opacity .2s;}
+  #kickoff-btn{width:100%;padding:15px;border-radius:12px;border:none;background:#4ade80;color:#07111f;font-weight:900;font-size:17px;letter-spacing:1px;margin-top:4px;}
   #kickoff-btn:disabled{background:#1e293b;color:#475569;}
+  .resume-banner{background:#4ade8022;border:1px solid #4ade80;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+  .resume-banner span{font-size:12px;color:#4ade80;font-weight:700;}
+  .resume-banner button{background:#4ade80;color:#07111f;border:none;border-radius:6px;padding:6px 14px;font-weight:900;font-size:12px;}
+  .clear-btn{background:none;border:1px solid #334155;color:#64748b;border-radius:6px;padding:4px 10px;font-size:11px;margin-top:6px;width:100%;}
 
   /* Game */
   .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
@@ -38,17 +42,14 @@
   .game-clock{font-size:24px;font-weight:900;color:#fff;line-height:1;}
   .timer-btn{margin-top:5px;border:none;border-radius:6px;padding:3px 12px;font-size:10px;font-weight:900;letter-spacing:1px;}
   .sbtn{background:#1e293b;border:none;color:#94a3b8;border-radius:6px;width:26px;height:26px;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;}
-
   .swap-hint{background:#f59e0b18;border:1px solid #f59e0b;border-radius:8px;padding:7px 12px;margin-bottom:7px;font-size:12px;color:#fbbf24;text-align:center;}
   .swap-hint .cancel{margin-left:10px;color:#f87171;cursor:pointer;}
 
   /* Field */
   #field-wrap{position:relative;margin:0 auto;margin-bottom:10px;border-radius:10px;overflow:hidden;}
-  #field-svg{position:absolute;top:0;left:0;pointer-events:none;}
   .field-label{position:absolute;left:0;width:100%;text-align:center;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,0.2);font-weight:700;pointer-events:none;}
   .token{position:absolute;display:flex;flex-direction:column;align-items:center;cursor:pointer;z-index:10;transition:transform .12s;}
   .token.selected{transform:scale(1.18)!important;filter:drop-shadow(0 0 9px #f59e0b);}
-  .token-circle{border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:border .12s;}
   .token-name{background:rgba(0,0,0,0.72);border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;color:#fff;margin-top:2px;max-width:56px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .token-time{font-size:8px;color:rgba(255,255,255,0.6);font-weight:600;}
   .token-empty{font-size:8px;color:rgba(255,255,255,0.25);margin-top:2px;}
@@ -67,6 +68,9 @@
   .pt-bar-wrap{flex:1;background:#1e293b;border-radius:4px;height:6px;overflow:hidden;}
   .pt-bar{height:100%;border-radius:4px;transition:width 1s;}
   .pt-val{font-size:10px;color:#64748b;width:38px;text-align:right;}
+
+  /* New game btn */
+  .new-game-btn{background:none;border:1px solid #334155;color:#64748b;border-radius:6px;padding:4px 10px;font-size:11px;}
 </style>
 </head>
 <body>
@@ -75,6 +79,12 @@
 <div id="setup-page" class="page">
   <h1>⚽ LINEUP BOSS</h1>
   <div class="sub">7v7 YOUTH SOCCER</div>
+
+  <!-- Resume banner (shown if saved game exists) -->
+  <div id="resume-banner" class="resume-banner hidden">
+    <span>🔄 Game in progress — resume?</span>
+    <button onclick="resumeGame()">RESUME →</button>
+  </div>
 
   <div class="card">
     <label class="lbl">YOUR TEAM NAME</label>
@@ -103,6 +113,7 @@
       <button id="add-btn" onclick="addPlayer()">+</button>
     </div>
     <div class="player-chips" id="player-chips"></div>
+    <button class="clear-btn" onclick="clearRoster()" style="margin-top:10px;">🗑 Clear Roster</button>
   </div>
 
   <button id="kickoff-btn" onclick="startGame()" disabled>KICK OFF →</button>
@@ -114,7 +125,7 @@
   <div class="top-bar">
     <button class="back-btn" onclick="goSetup()">← Setup</button>
     <span style="font-size:11px;color:#4ade80;font-weight:900;letter-spacing:2px;">⚽ LINEUP BOSS</span>
-    <span style="font-size:11px;color:#475569;">7v7</span>
+    <button class="new-game-btn" onclick="newGame()">New Game</button>
   </div>
 
   <div class="score-board">
@@ -160,87 +171,106 @@
 </div>
 
 <script>
-// ─── Constants ───────────────────────────────────────────────────────────────
 const POSITIONS = [
-  {id:"LF", label:"LF", full:"Left Forward",    x:22, y:14},
-  {id:"CF", label:"CF", full:"Center Forward",  x:50, y:10},
-  {id:"RF", label:"RF", full:"Right Forward",   x:78, y:14},
-  {id:"LD", label:"LD", full:"Left Defender",   x:22, y:58},
-  {id:"CD", label:"CD", full:"Center Defender", x:50, y:58},
-  {id:"RD", label:"RD", full:"Right Defender",  x:78, y:58},
-  {id:"GK", label:"GK", full:"Goalkeeper",      x:50, y:88},
+  {id:"LF",label:"LF",full:"Left Forward",   x:22,y:14},
+  {id:"CF",label:"CF",full:"Center Forward", x:50,y:10},
+  {id:"RF",label:"RF",full:"Right Forward",  x:78,y:14},
+  {id:"LD",label:"LD",full:"Left Defender",  x:22,y:58},
+  {id:"CD",label:"CD",full:"Center Defender",x:50,y:58},
+  {id:"RD",label:"RD",full:"Right Defender", x:78,y:58},
+  {id:"GK",label:"GK",full:"Goalkeeper",     x:50,y:88},
 ];
-const COLORS = ["#e63946","#2196F3","#FF9800","#9C27B0","#00BCD4","#FF5722","#4CAF50","#F06292","#FFD600","#00E676","#FF6D00","#40C4FF"];
+const COLORS=["#e63946","#2196F3","#FF9800","#9C27B0","#00BCD4","#FF5722","#4CAF50","#F06292","#FFD600","#00E676","#FF6D00","#40C4FF"];
+const SAVE_KEY = "lineupboss_v2";
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let players = [];
-let lineup  = {};   // posId -> name|null
-let bench   = [];
-let playTime = {};  // name -> seconds
-let gameTime = 0;
-let running  = false;
-let score    = {us:0, them:0};
-let swap     = null; // {type:"field"|"bench", id:posId|name}
-let timerInterval = null;
-let fw = 0, fh = 0;
+let players=[], lineup={}, bench=[], playTime={}, gameTime=0, running=false;
+let score={us:0,them:0}, swap=null, timerInterval=null;
+let fw=0, fh=0;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmt(s){ return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
-function colorOf(name){ if(!name) return "#334155"; return COLORS[players.indexOf(name)%COLORS.length]; }
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+function colorOf(n){if(!n)return"#334155";return COLORS[players.indexOf(n)%COLORS.length];}
 
-// ─── Setup ────────────────────────────────────────────────────────────────────
-document.getElementById("player-input").addEventListener("keydown", e=>{ if(e.key==="Enter") addPlayer(); });
+// ─── Persistence ──────────────────────────────────────────────────────────────
+function saveState(){
+  try {
+    const state={
+      players, lineup, bench, playTime, gameTime,
+      score, screen:"game",
+      teamName: document.getElementById("score-team-name").textContent,
+      oppName:  document.getElementById("score-opp-name").textContent,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch(e){}
+}
 
-function addPlayer(){
-  const inp = document.getElementById("player-input");
-  const n = inp.value.trim();
-  if(n && !players.includes(n)){
-    players.push(n);
-    playTime[n] = 0;
-    renderChips();
+function loadState(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+
+function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+
+function saveRoster(){
+  try {
+    localStorage.setItem(SAVE_KEY+"_roster", JSON.stringify({
+      players,
+      teamName: document.getElementById("team-name").value,
+      oppName:  document.getElementById("opp-name").value,
+    }));
+  } catch(e){}
+}
+
+function loadRoster(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY+"_roster");
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener("load", ()=>{
+  // Load saved roster into setup
+  const roster = loadRoster();
+  if(roster){
+    if(roster.teamName) document.getElementById("team-name").value = roster.teamName;
+    if(roster.oppName)  document.getElementById("opp-name").value  = roster.oppName;
+    if(roster.players && roster.players.length){
+      roster.players.forEach(p=>{ players.push(p); playTime[p]=0; });
+      renderChips();
+    }
   }
-  inp.value = "";
-  inp.focus();
-}
 
-function removePlayer(n){
-  players = players.filter(p=>p!==n);
-  delete playTime[n];
-  renderChips();
-}
+  // Check for in-progress game
+  const saved = loadState();
+  if(saved && saved.screen==="game"){
+    document.getElementById("resume-banner").classList.remove("hidden");
+  }
+});
 
-function renderChips(){
-  const wrap = document.getElementById("player-chips");
-  wrap.innerHTML = "";
-  players.forEach((p,i)=>{
-    const d = document.createElement("div");
-    d.className = "chip";
-    d.style.background = COLORS[i%COLORS.length];
-    d.innerHTML = `${p}<span class="rm" onclick="removePlayer('${p.replace(/'/g,"\\'")}')">×</span>`;
-    wrap.appendChild(d);
-  });
-  document.getElementById("player-count-lbl").textContent =
-    `PLAYERS (${players.length} added · first 7 go on field, rest on bench)`;
-  document.getElementById("kickoff-btn").disabled = players.length < 1;
-}
+// ─── Resume ───────────────────────────────────────────────────────────────────
+function resumeGame(){
+  const saved = loadState();
+  if(!saved) return;
+  players   = saved.players   || [];
+  lineup    = saved.lineup    || {};
+  bench     = saved.bench     || [];
+  playTime  = saved.playTime  || {};
+  gameTime  = saved.gameTime  || 0;
+  score     = saved.score     || {us:0,them:0};
+  running   = false;
 
-function startGame(){
-  lineup = {};
-  POSITIONS.forEach((pos,i)=>{ lineup[pos.id] = players[i]||null; });
-  bench = players.slice(7);
-  score = {us:0,them:0};
-  gameTime = 0;
-  running = false;
-  swap = null;
-  players.forEach(p=>{ playTime[p]=0; });
-
-  document.getElementById("score-team-name").textContent = document.getElementById("team-name").value||"Our Team";
-  document.getElementById("score-opp-name").textContent  = document.getElementById("opp-name").value||"Opponent";
-  document.getElementById("score-us").textContent   = "0";
-  document.getElementById("score-them").textContent = "0";
-  document.getElementById("game-clock").textContent = "00:00";
-  const tb = document.getElementById("timer-btn");
-  tb.textContent = "▶ START"; tb.style.background="#4ade80"; tb.style.color="#07111f";
+  document.getElementById("score-team-name").textContent = saved.teamName || "Our Team";
+  document.getElementById("score-opp-name").textContent  = saved.oppName  || "Opponent";
+  document.getElementById("score-us").textContent   = score.us;
+  document.getElementById("score-them").textContent = score.them;
+  document.getElementById("game-clock").textContent = fmt(gameTime);
+  const tb=document.getElementById("timer-btn");
+  tb.textContent="▶ START"; tb.style.background="#4ade80"; tb.style.color="#07111f";
 
   buildField();
   document.getElementById("setup-page").classList.add("hidden");
@@ -248,22 +278,120 @@ function startGame(){
   renderGame();
 }
 
-function goSetup(){
-  clearInterval(timerInterval);
-  running = false;
-  document.getElementById("game-page").classList.add("hidden");
-  document.getElementById("setup-page").classList.remove("hidden");
+// ─── Setup ────────────────────────────────────────────────────────────────────
+document.getElementById("player-input").addEventListener("keydown",e=>{if(e.key==="Enter")addPlayer();});
+
+function addPlayer(){
+  const inp=document.getElementById("player-input");
+  const n=inp.value.trim();
+  if(n && !players.includes(n)){
+    players.push(n);
+    playTime[n]=0;
+    renderChips();
+    saveRoster();
+  }
+  inp.value="";
+  inp.focus();
 }
 
-// ─── Field build ──────────────────────────────────────────────────────────────
-function buildField(){
-  fw = Math.min(330, window.innerWidth - 28);
-  fh = Math.round(fw * 1.5);
-  const wrap = document.getElementById("field-wrap");
-  wrap.style.cssText = `width:${fw}px;height:${fh}px;background:linear-gradient(180deg,#1a6b3c,#1d7a44 50%,#1a6b3c);background-image:repeating-linear-gradient(90deg,transparent,transparent 29px,rgba(255,255,255,0.025) 29px,rgba(255,255,255,0.025) 30px),repeating-linear-gradient(0deg,transparent,transparent 29px,rgba(255,255,255,0.025) 29px,rgba(255,255,255,0.025) 30px);box-shadow:0 0 28px #4ade8028;`;
+function removePlayer(n){
+  players=players.filter(p=>p!==n);
+  delete playTime[n];
+  renderChips();
+  saveRoster();
+}
 
-  wrap.innerHTML = `
-  <svg id="field-svg" width="${fw}" height="${fh}" viewBox="0 0 ${fw} ${fh}">
+function clearRoster(){
+  if(!confirm("Clear all players?")) return;
+  players=[];
+  playTime={};
+  renderChips();
+  try{ localStorage.removeItem(SAVE_KEY+"_roster"); }catch(e){}
+}
+
+function renderChips(){
+  const wrap=document.getElementById("player-chips");
+  wrap.innerHTML="";
+  players.forEach((p,i)=>{
+    const d=document.createElement("div");
+    d.className="chip";
+    d.style.background=COLORS[i%COLORS.length];
+    d.innerHTML=`${p}<span class="rm" onclick="removePlayer('${p.replace(/'/g,"\\'")}')">×</span>`;
+    wrap.appendChild(d);
+  });
+  document.getElementById("player-count-lbl").textContent=
+    `PLAYERS (${players.length} added · first 7 on field, rest bench)`;
+  document.getElementById("kickoff-btn").disabled=players.length<1;
+}
+
+function startGame(){
+  // Reset play times for new game but keep players
+  players.forEach(p=>{ playTime[p]=0; });
+  lineup={};
+  POSITIONS.forEach((pos,i)=>{ lineup[pos.id]=players[i]||null; });
+  bench=players.slice(7);
+  score={us:0,them:0};
+  gameTime=0;
+  running=false;
+  swap=null;
+
+  const teamName=document.getElementById("team-name").value||"Our Team";
+  const oppName =document.getElementById("opp-name").value ||"Opponent";
+
+  document.getElementById("score-team-name").textContent=teamName;
+  document.getElementById("score-opp-name").textContent =oppName;
+  document.getElementById("score-us").textContent   ="0";
+  document.getElementById("score-them").textContent ="0";
+  document.getElementById("game-clock").textContent ="00:00";
+  const tb=document.getElementById("timer-btn");
+  tb.textContent="▶ START"; tb.style.background="#4ade80"; tb.style.color="#07111f";
+
+  saveRoster();
+  buildField();
+  document.getElementById("setup-page").classList.add("hidden");
+  document.getElementById("resume-banner").classList.add("hidden");
+  document.getElementById("game-page").classList.remove("hidden");
+  saveState();
+  renderGame();
+}
+
+function goSetup(){
+  clearInterval(timerInterval);
+  running=false;
+  saveState();
+  document.getElementById("game-page").classList.add("hidden");
+  document.getElementById("setup-page").classList.remove("hidden");
+  document.getElementById("resume-banner").classList.remove("hidden");
+}
+
+function newGame(){
+  if(!confirm("Start a new game? This will reset the timer and scores but keep your roster.")) return;
+  clearInterval(timerInterval);
+  clearSave();
+  players.forEach(p=>{ playTime[p]=0; });
+  lineup={};
+  POSITIONS.forEach((pos,i)=>{ lineup[pos.id]=players[i]||null; });
+  bench=players.slice(7);
+  score={us:0,them:0};
+  gameTime=0;
+  running=false;
+  swap=null;
+  document.getElementById("score-us").textContent="0";
+  document.getElementById("score-them").textContent="0";
+  document.getElementById("game-clock").textContent="00:00";
+  const tb=document.getElementById("timer-btn");
+  tb.textContent="▶ START"; tb.style.background="#4ade80"; tb.style.color="#07111f";
+  renderGame();
+}
+
+// ─── Field ────────────────────────────────────────────────────────────────────
+function buildField(){
+  fw=Math.min(330,window.innerWidth-28);
+  fh=Math.round(fw*1.5);
+  const wrap=document.getElementById("field-wrap");
+  wrap.style.cssText=`width:${fw}px;height:${fh}px;background:linear-gradient(180deg,#1a6b3c,#1d7a44 50%,#1a6b3c);background-image:repeating-linear-gradient(90deg,transparent,transparent 29px,rgba(255,255,255,0.025) 29px,rgba(255,255,255,0.025) 30px),repeating-linear-gradient(0deg,transparent,transparent 29px,rgba(255,255,255,0.025) 29px,rgba(255,255,255,0.025) 30px);box-shadow:0 0 28px #4ade8028;`;
+  wrap.innerHTML=`
+  <svg width="${fw}" height="${fh}" style="position:absolute;top:0;left:0;pointer-events:none;" viewBox="0 0 ${fw} ${fh}">
     <rect x="8" y="8" width="${fw-16}" height="${fh-16}" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
     <line x1="8" y1="${fh/2}" x2="${fw-8}" y2="${fh/2}" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
     <circle cx="${fw/2}" cy="${fh/2}" r="${fw*0.13}" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
@@ -278,126 +406,108 @@ function buildField(){
     <circle cx="${fw/2}" cy="${fh*0.88}" r="2.5" fill="rgba(255,255,255,0.4)"/>
   </svg>
   <div class="field-label" style="top:10px;">ATTACKING ▲</div>
-  <div class="field-label" style="bottom:10px;">▼ DEFENDING</div>
-  `;
-
+  <div class="field-label" style="bottom:10px;">▼ DEFENDING</div>`;
   POSITIONS.forEach(pos=>{
-    const tok = document.createElement("div");
-    tok.className = "token";
-    tok.id = "tok-"+pos.id;
-    const px = (pos.x/100)*fw;
-    const py = (pos.y/100)*fh;
-    tok.style.left = (px-22)+"px";
-    tok.style.top  = (py-30)+"px";
-    tok.onclick = ()=>handleField(pos.id);
+    const tok=document.createElement("div");
+    tok.className="token"; tok.id="tok-"+pos.id;
+    tok.style.left=((pos.x/100)*fw-22)+"px";
+    tok.style.top =((pos.y/100)*fh-30)+"px";
+    tok.onclick=()=>handleField(pos.id);
     wrap.appendChild(tok);
   });
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 function renderGame(){
-  // tokens
   POSITIONS.forEach(pos=>{
-    const name = lineup[pos.id];
-    const sel  = swap && swap.type==="field" && swap.id===pos.id;
-    const c    = colorOf(name);
-    const tok  = document.getElementById("tok-"+pos.id);
-    tok.className = "token" + (sel?" selected":"");
-    tok.innerHTML = `
-      <div class="token-circle" style="width:42px;height:42px;background:${name?c:"rgba(255,255,255,0.1)"};border:${sel?"2.5px solid #f59e0b":`2px solid ${name?"rgba(255,255,255,0.55)":"rgba(255,255,255,0.15)"}`};box-shadow:${name?"0 3px 10px rgba(0,0,0,0.45)":"none"};">
+    const name=lineup[pos.id], sel=swap&&swap.type==="field"&&swap.id===pos.id, c=colorOf(name);
+    const tok=document.getElementById("tok-"+pos.id);
+    tok.className="token"+(sel?" selected":"");
+    tok.innerHTML=`
+      <div style="width:42px;height:42px;border-radius:50%;background:${name?c:"rgba(255,255,255,0.1)"};border:${sel?"2.5px solid #f59e0b":`2px solid ${name?"rgba(255,255,255,0.55)":"rgba(255,255,255,0.15)"}`};display:flex;align-items:center;justify-content:center;box-shadow:${name?"0 3px 10px rgba(0,0,0,0.45)":"none"};">
         <span style="font-size:11px;font-weight:900;color:#fff;">${name?name.substring(0,2).toUpperCase():pos.label}</span>
       </div>
-      ${name
-        ? `<div class="token-name">${name}</div><div class="token-time">${fmt(playTime[name]||0)}</div>`
-        : `<div class="token-empty">${pos.full}</div>`}
-    `;
+      ${name?`<div class="token-name">${name}</div><div class="token-time">${fmt(playTime[name]||0)}</div>`:`<div class="token-empty">${pos.full}</div>`}`;
   });
 
-  // bench
-  const bc = document.getElementById("bench-chips");
-  bc.innerHTML = "";
+  const bc=document.getElementById("bench-chips");
+  bc.innerHTML="";
   bench.forEach(name=>{
-    const sel = swap && swap.type==="bench" && swap.id===name;
-    const d = document.createElement("div");
-    d.className = "bench-chip"+(sel?" selected":"");
-    d.style.background = sel?"#f59e0b":colorOf(name);
-    d.innerHTML = `<span>${name}</span><small>${fmt(playTime[name]||0)}</small>`;
-    d.onclick = ()=>handleBench(name);
+    const sel=swap&&swap.type==="bench"&&swap.id===name;
+    const d=document.createElement("div");
+    d.className="bench-chip"+(sel?" selected":"");
+    d.style.background=sel?"#f59e0b":colorOf(name);
+    d.innerHTML=`<span>${name}</span><small>${fmt(playTime[name]||0)}</small>`;
+    d.onclick=()=>handleBench(name);
     bc.appendChild(d);
   });
-  document.getElementById("bench-lbl").textContent = `BENCH — ${bench.length} PLAYER${bench.length!==1?"S":""}`;
+  document.getElementById("bench-lbl").textContent=`BENCH — ${bench.length} PLAYER${bench.length!==1?"S":""}`;
 
-  // play time
-  const ptl = document.getElementById("pt-list");
-  ptl.innerHTML = "";
+  const ptl=document.getElementById("pt-list");
+  ptl.innerHTML="";
   [...players].sort((a,b)=>(playTime[b]||0)-(playTime[a]||0)).forEach(name=>{
-    const t = playTime[name]||0;
-    const pct = gameTime>0 ? Math.round((t/gameTime)*100) : 0;
-    ptl.innerHTML += `
-      <div class="pt-row">
-        <div class="pt-dot" style="background:${colorOf(name)};"></div>
-        <div class="pt-name">${name}</div>
-        <div class="pt-bar-wrap"><div class="pt-bar" style="width:${pct}%;background:${colorOf(name)};"></div></div>
-        <div class="pt-val">${fmt(t)}</div>
-      </div>`;
+    const t=playTime[name]||0, pct=gameTime>0?Math.round((t/gameTime)*100):0;
+    ptl.innerHTML+=`<div class="pt-row">
+      <div class="pt-dot" style="background:${colorOf(name)};"></div>
+      <div class="pt-name">${name}</div>
+      <div class="pt-bar-wrap"><div class="pt-bar" style="width:${pct}%;background:${colorOf(name)};"></div></div>
+      <div class="pt-val">${fmt(t)}</div></div>`;
   });
 
-  // swap hint
-  const hint = document.getElementById("swap-hint");
+  const hint=document.getElementById("swap-hint");
   if(swap){
     hint.classList.remove("hidden");
-    document.getElementById("swap-name").textContent =
-      swap.type==="field" ? (lineup[swap.id]||swap.id) : swap.id;
-  } else {
-    hint.classList.add("hidden");
-  }
+    document.getElementById("swap-name").textContent=swap.type==="field"?(lineup[swap.id]||swap.id):swap.id;
+  } else hint.classList.add("hidden");
 }
 
-// ─── Swap logic ───────────────────────────────────────────────────────────────
+// ─── Swap ─────────────────────────────────────────────────────────────────────
 function handleField(posId){
-  if(!swap){ swap={type:"field",id:posId}; renderGame(); return; }
+  if(!swap){swap={type:"field",id:posId};renderGame();return;}
   if(swap.type==="field"){
-    if(swap.id===posId){ swap=null; renderGame(); return; }
-    const tmp=lineup[swap.id]; lineup[swap.id]=lineup[posId]; lineup[posId]=tmp;
+    if(swap.id===posId){swap=null;renderGame();return;}
+    const tmp=lineup[swap.id];lineup[swap.id]=lineup[posId];lineup[posId]=tmp;
     swap=null;
   } else {
-    const benched=swap.id, fielded=lineup[posId];
+    const benched=swap.id,fielded=lineup[posId];
     lineup[posId]=benched;
     bench=bench.filter(p=>p!==benched);
-    if(fielded) bench.push(fielded);
+    if(fielded)bench.push(fielded);
     swap=null;
   }
-  renderGame();
+  saveState(); renderGame();
 }
 
 function handleBench(name){
-  if(!swap){ swap={type:"bench",id:name}; renderGame(); return; }
-  if(swap.type==="bench"){ swap=swap.id===name?null:{type:"bench",id:name}; renderGame(); return; }
-  const posId=swap.id, fielded=lineup[posId];
+  if(!swap){swap={type:"bench",id:name};renderGame();return;}
+  if(swap.type==="bench"){swap=swap.id===name?null:{type:"bench",id:name};renderGame();return;}
+  const posId=swap.id,fielded=lineup[posId];
   lineup[posId]=name;
   bench=bench.filter(p=>p!==name);
-  if(fielded) bench.push(fielded);
+  if(fielded)bench.push(fielded);
   swap=null;
-  renderGame();
+  saveState(); renderGame();
 }
 
-function cancelSwap(){ swap=null; renderGame(); }
+function cancelSwap(){swap=null;renderGame();}
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
 function toggleTimer(){
   running=!running;
   const tb=document.getElementById("timer-btn");
   if(running){
-    tb.textContent="⏸ PAUSE"; tb.style.background="#ef4444"; tb.style.color="#fff";
+    tb.textContent="⏸ PAUSE";tb.style.background="#ef4444";tb.style.color="#fff";
     timerInterval=setInterval(()=>{
       gameTime++;
-      Object.values(lineup).forEach(n=>{ if(n) playTime[n]=(playTime[n]||0)+1; });
+      Object.values(lineup).forEach(n=>{if(n)playTime[n]=(playTime[n]||0)+1;});
       document.getElementById("game-clock").textContent=fmt(gameTime);
+      if(gameTime%10===0) saveState(); // save every 10 seconds
       renderGame();
     },1000);
   } else {
-    tb.textContent="▶ START"; tb.style.background="#4ade80"; tb.style.color="#07111f";
+    tb.textContent="▶ START";tb.style.background="#4ade80";tb.style.color="#07111f";
     clearInterval(timerInterval);
+    saveState();
   }
 }
 
@@ -405,7 +515,19 @@ function toggleTimer(){
 function changeScore(side,delta){
   score[side]=Math.max(0,score[side]+delta);
   document.getElementById("score-"+side).textContent=score[side];
+  saveState();
 }
+
+// Save when app goes to background
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden && running){
+    clearInterval(timerInterval);
+    running=false;
+    saveState();
+    const tb=document.getElementById("timer-btn");
+    tb.textContent="▶ START";tb.style.background="#4ade80";tb.style.color="#07111f";
+  }
+});
 </script>
 </body>
 </html>
